@@ -1,2 +1,6 @@
 data/*
-/.idea/
+.idea
+.vscode
+*pyc
+.DS_Store
+**/__pycache__/
