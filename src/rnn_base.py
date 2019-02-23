@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import tensorflow as tf
 
-from .data_processor import InputGenerator, InputBasicIterator
+from .data_processor import InputGenerator
 
 
 def main():
@@ -72,19 +72,12 @@ def PetFinder_Basic_RNN(train, args, inputs):
 
 
 def run(args):
-	input_creator = InputGenerator(args.data_dir, args.batch_size, train=args.train)
-	if args.mode == 'baisc':
-		input_iter = InputBasicIterator(input_creator.input_basic_produce(),
-		                                input_creator.batch_size)
-	else:
-		inputs = []
-		input_iter = []
-		pass
+	input_generator = InputGenerator(args.data_dir, args.batch_size, train=args.train)
 	
-	labels = input_creator.labels
+	labels = input_generator.labels
 	num_classes = np.shape(labels[0])
 	
-	inputs_holder = tf.placeholder("float", [None, input_iter.inputs_size, 1])
+	inputs_holder = tf.placeholder("float", [None, input_generator.inputs_size, 1])
 	labels_holder = tf.placeholder("float", [None, num_classes])
 	train_holder = tf.placeholder(tf.bool)
 	
@@ -107,11 +100,12 @@ def run(args):
 	
 	# loss
 	
-	# quadratic weighted kappa
+	# quad_weighted_kappa = kappa(input_generator.labels)
+	
 	
 	with tf.Session() as sess:
 		pass
-
+	## TODO: define loop to produce inputs
 
 if __name__ == '__main__':
 	main()

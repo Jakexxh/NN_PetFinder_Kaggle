@@ -5,20 +5,32 @@ import pandas as pd
 
 
 class InputGenerator:
-	def __init__(self, path, batch_size, train=True):
+	def __init__(self, path, batch_size, train=True, mode='basic'):
 		self.path = path
 		self.train = train
+		self.mode = mode
 		self.batch_size = batch_size
 		self.epoch_size = -1
 		self.batch_len = -1
+		self.inputs_size = -1
+		self.batch_flag = 0
 		
 		origin_data = pd.read_csv(self.path + '/train.csv')
-		self.labels = origin_data.get('AdoptionSpeed').to_numpy(dtype=float)
-		self.pet_ID = origin_data.get('PetID').tolist()
+		origin_data.sample(frac=1)  # shuffle
 		
-		self.rescuerID_voc = self._create_rescuerID_dict(origin_data.get('RescuerID'))
-		self.input_basic = self.input_basic_generator(origin_data)
-		self.input_desc = self.input_desc_generator(origin_data)
+		self.batch_len = origin_data.shape[0] // self.batch_size
+		self.inputs_size = self.batch_len * self.batch_size
+		
+		self.pet_ID = origin_data.get('PetID').tolist()
+		self.labels = origin_data.get('AdoptionSpeed').to_numpy(dtype=float)
+		self.input_labels = self.labels_generator()
+		
+		# self.rescuerID_voc = self._create_rescuerID_dict(origin_data.get('RescuerID'))
+		
+		if mode == 'basic':
+			self.inputs = self.input_basic_generator(origin_data)
+		else:
+			self.inputs = self.input_desc_generator(origin_data)
 	
 	def _create_name_dict(self, name_data):
 		pass
@@ -50,7 +62,6 @@ class InputGenerator:
 		# Normalize some data
 		# change cat type from 2 to -1
 		# change No to -1, Not Sure to 0
-		
 		data['Type'] = data['Type'].map({1: 1, 2: -1})
 		data['Gender'] = data['Gender'].map({1: 1, 2: -1, 3: 0})
 		data['Vaccinated'] = data['Vaccinated'].map({1: 1, 2: -1, 3: 0})
@@ -58,39 +69,36 @@ class InputGenerator:
 		data['Sterilized'] = data['Sterilized'].map({1: 1, 2: -1, 3: 0})
 		
 		input_basic = data.to_numpy(dtype=float)
-		return input_basic
+		inputs = input_basic[0:self.batch_len * self.batch_size, :]
+		
+		return inputs
+	
+	def labels_generator(self):
+		input_labels = np.zeros((self.inputs_size, 5))
+		for x in range(self.inputs_size):
+			input_labels[x][int(self.labels[x])] = float(1)
+		return input_labels
 	
 	def input_desc_generator(self, data):
 		pass
 	
-	def input_basic_produce(self):
-		self.batch_len = self.input_basic.shape[0] // self.batch_size
-		inputs = self.input_basic[0:self.batch_len * self.batch_size, :]
-		return inputs
-
-
-class InputBasicIterator:
-	def __init__(self, inputs, batch_size):
-		self.inputs = inputs
-		self.inputs_size = np.shape(inputs)[0]
-		self.batch_size = batch_size
-		self.flag = 0
+	# def input_basic_produce(self):
 	
-	def __iter__(self):
-		return self
+	# return inputs
 	
-	def __next__(self):
-		
-		if self.inputs_size > self.flag:
-			next_inputs = self.inputs[self.flag:self.flag + self.batch_size, :, np.newaxis]
-			self.flag = self.flag + self.batch_size
-			return next_inputs
-		elif self.inputs_size == self.flag:
-			raise StopIteration
-		else:
-			raise ValueError('Iterator does not match the data!')
+	def next_batch(self):
+		if self.mode == 'basic':
+			if self.inputs_size > self.batch_flag:
+				next_inputs = self.inputs[self.batch_flag:self.batch_flag + self.batch_size, :, np.newaxis]
+				next_labels = self.input_labels[self.batch_flag:self.batch_flag + self.batch_size, :]
+				self.batch_flag = self.batch_flag + self.batch_size
+				return next_inputs, next_labels
+			elif self.inputs_size == self.batch_flag:
+				raise StopIteration
+			else:
+				raise ValueError('Iterator does not match the data size!')
+
 
 # gen = InputGenerator('../data',20)
-# iterator = InputBasicIterator(gen.input_basic_produce(),gen.batch_size)
-# print(next(iterator))
-# print(next(iterator))
+# k = gen.next_batch()
+# pass
