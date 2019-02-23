@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import tensorflow as tf
 
-from .reader import InputGenerator
+from .data_processor import InputGenerator, InputBasicIterator
 
 
 def main():
@@ -74,15 +74,17 @@ def PetFinder_Basic_RNN(train, args, inputs):
 def run(args):
 	input_creator = InputGenerator(args.data_dir, args.batch_size, train=args.train)
 	if args.mode == 'baisc':
-		inputs = input_creator.input_basic_produce()
-		inputs = inputs[:, :, np.newaxis]
+		input_iter = InputBasicIterator(input_creator.input_basic_produce(),
+		                                input_creator.batch_size)
 	else:
 		inputs = []
+		input_iter = []
 		pass
+	
 	labels = input_creator.labels
 	num_classes = np.shape(labels[0])
 	
-	inputs_holder = tf.placeholder("float", [None, np.shape(inputs)[1], 1])
+	inputs_holder = tf.placeholder("float", [None, input_iter.inputs_size, 1])
 	labels_holder = tf.placeholder("float", [None, num_classes])
 	train_holder = tf.placeholder(tf.bool)
 	
@@ -98,10 +100,14 @@ def run(args):
 		f_biases = tf.get_variable('b', [num_classes])
 	tf.summary.histogram("f_biases", f_biases)
 	
-	logits = PetFinder_Basic_RNN(train_holder, args, inputs_holder)
-	
-	outputs, final_state = tf.nn.softmax(logits)
+	outputs, final_state = PetFinder_Basic_RNN(train_holder, args, inputs_holder)
 	logits = tf.matmul(outputs[-1], f_weight) + f_biases
+	
+	# logits = tf.nn.softmax(logits)
+	
+	# loss
+	
+	# quadratic weighted kappa
 	
 	with tf.Session() as sess:
 		pass

@@ -65,9 +65,32 @@ class InputGenerator:
 	
 	def input_basic_produce(self):
 		self.batch_len = self.input_basic.shape[0] // self.batch_size
-		final_input = np.reshape(self.input_basic[0: self.batch_size * self.batch_len],
-		                         [self.batch_size, self.batch_len])
-		return final_input
+		inputs = self.input_basic[0:self.batch_len * self.batch_size, :]
+		return inputs
 
-# i = input('../data/train.csv')
-# pass
+
+class InputBasicIterator:
+	def __init__(self, inputs, batch_size):
+		self.inputs = inputs
+		self.inputs_size = np.shape(inputs)[0]
+		self.batch_size = batch_size
+		self.flag = 0
+	
+	def __iter__(self):
+		return self
+	
+	def __next__(self):
+		
+		if self.inputs_size > self.flag:
+			next_inputs = self.inputs[self.flag:self.flag + self.batch_size, :, np.newaxis]
+			self.flag = self.flag + self.batch_size
+			return next_inputs
+		elif self.inputs_size == self.flag:
+			raise StopIteration
+		else:
+			raise ValueError('Iterator does not match the data!')
+
+# gen = InputGenerator('../data',20)
+# iterator = InputBasicIterator(gen.input_basic_produce(),gen.batch_size)
+# print(next(iterator))
+# print(next(iterator))
