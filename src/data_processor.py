@@ -15,17 +15,27 @@ class InputGenerator:
 		self.inputs_size = -1
 		self.inputs_col_num = -1
 		self.batch_flag = 0
-		
-		origin_data = pd.read_csv(self.path + '/train.csv')
-		origin_data.sample(frac=1)  # shuffle
-		
-		self.batch_len = origin_data.shape[0] // self.batch_size
-		self.inputs_size = self.batch_len * self.batch_size
-		
-		self.pet_ID = origin_data.get('PetID').tolist()
-		self.labels = origin_data.get('AdoptionSpeed').to_numpy(dtype=float)
 		self.num_classes = 5
-		self.input_labels = self.labels_generator()
+		self.pad_inputs_num = -1
+		
+		origin_data = pd.read_csv(self.path)
+		
+		if train:
+			origin_data.sample(frac=1)  # shuffle
+			self.batch_len = origin_data.shape[0] // self.batch_size
+			self.inputs_size = self.batch_len * self.batch_size
+		else:
+			self.inputs_size = origin_data.shape[0]
+			remain_inputs_num = origin_data.shape[0] % self.batch_size
+			self.pad_inputs_num = self.batch_size - remain_inputs_num
+			self.inputs_size = self.inputs_size + self.pad_inputs_num
+			self.batch_len = self.inputs_size // self.batch_size
+		self.pet_ID = origin_data.get('PetID').tolist()
+		if train:
+			self.labels = origin_data.get('AdoptionSpeed').to_numpy(dtype=float)
+			self.input_labels = self.labels_generator()
+		else:
+			self.input_labels = np.zeros([self.inputs_size + self.pad_inputs_num, 5])
 		
 		# self.rescuerID_voc = self._create_rescuerID_dict(origin_data.get('RescuerID'))
 		
@@ -61,6 +71,8 @@ class InputGenerator:
 	def input_basic_generator(self, data):
 		data = data.drop(['Name', 'Description', 'State', 'RescuerID',
 		                  'PetID', 'Breed1', 'Breed2', 'Color1', 'Color2', 'Color3'], axis=1)
+		if self.train:
+			data = data.drop('AdoptionSpeed', axis=1)
 		# Normalize some data
 		# change cat type from 2 to -1
 		# change No to -1, Not Sure to 0
@@ -71,7 +83,13 @@ class InputGenerator:
 		data['Sterilized'] = data['Sterilized'].map({1: 1, 2: -1, 3: 0})
 		
 		input_basic = data.to_numpy(dtype=float)
-		inputs = input_basic[0:self.batch_len * self.batch_size, :]
+		if self.train:
+			inputs = input_basic[0:self.batch_len * self.batch_size, :]
+		else:
+			pad = np.zeros((self.pad_inputs_num, input_basic.shape[1]))
+			inputs = np.concatenate((input_basic, pad), axis=0)
+			self.pet_ID = self.pet_ID + [0 for x in range(self.pad_inputs_num)]
+		
 		self.inputs_col_num = np.shape(inputs)[1]
 		# Time major
 		inputs = np.transpose(inputs)
@@ -91,16 +109,20 @@ class InputGenerator:
 	# return inputs
 	
 	def next_batch(self):
+		
 		if self.mode == 'basic':
 			if self.inputs_size > self.batch_flag:
 				next_inputs = self.inputs[:, self.batch_flag:self.batch_flag + self.batch_size, np.newaxis]
 				next_labels = self.input_labels[self.batch_flag:self.batch_flag + self.batch_size, :]
+				next_PetID = self.pet_ID[self.batch_flag:self.batch_flag + self.batch_size]
 				self.batch_flag = self.batch_flag + self.batch_size
-				return next_inputs, next_labels
+				return next_inputs, next_labels, next_PetID
 			elif self.inputs_size == self.batch_flag:
 				raise StopIteration
 			else:
 				raise ValueError('Iterator does not match the data size!')
+		else:
+			pass
 
 # gen = InputGenerator('../data',20)
 # k = gen.next_batch()
