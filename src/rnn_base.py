@@ -124,7 +124,7 @@ def run(args):
 	qwk_train = []
 	with tf.Session() as sess:
 		sess.run(init)
-		for step in range(1, 2):  # inputs_train_generator.batch_len + 1
+		for step in range(1, inputs_train_generator.batch_len + 1):
 			train_inputs, train_labels, _ = inputs_train_generator.next_batch()
 			sess.run(
 				[train_op], feed_dict={inputs_holder: train_inputs,
@@ -152,7 +152,6 @@ def run(args):
 		
 		preds = []
 		IDs = []
-		sub_dic = {}
 		for step in range(1, inputs_test_generator.batch_len + 1):
 			test_inputs, test_labels, ID = inputs_test_generator.next_batch()
 			pred = sess.run([prediction],
@@ -164,18 +163,11 @@ def run(args):
 			preds = preds + tmp_pred
 			IDs = IDs + ID
 		
-		# tmp_dic = dict(zip(ID, tmp_pred))
-		# sub_dic = dict(sub_dic.items() + tmp_pred.items())
-		
 		with open(args.log_dir + '/submission.csv', 'w') as outcsv:
 			writer = csv.writer(outcsv)
 			writer.writerow(['PetID', 'AdoptionSpeed'])
 			writer.writerows(zip(IDs[:- inputs_test_generator.pad_inputs_num],
 			                     preds[:- inputs_test_generator.pad_inputs_num]))
-		
-		# submission = pd.DataFrame({'AdoptionSpeed': preds[:- inputs_test_generator.pad_inputs_num],
-		#                            'PetID': IDs[:- inputs_test_generator.pad_inputs_num]})
-		# submission.to_csv(args.log_dir + '/submission.csv', index=False)
 		
 		save_path = saver.save(sess, args.save_dir + "/model.ckpt")
 		print("Model saved in path: %s" % save_path)
