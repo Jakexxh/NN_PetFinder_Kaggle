@@ -13,6 +13,7 @@ class InputGenerator:
 		self.epoch_size = -1
 		self.batch_len = -1
 		self.inputs_size = -1
+		self.inputs_col_num = -1
 		self.batch_flag = 0
 		
 		origin_data = pd.read_csv(self.path + '/train.csv')
@@ -23,6 +24,7 @@ class InputGenerator:
 		
 		self.pet_ID = origin_data.get('PetID').tolist()
 		self.labels = origin_data.get('AdoptionSpeed').to_numpy(dtype=float)
+		self.num_classes = 5
 		self.input_labels = self.labels_generator()
 		
 		# self.rescuerID_voc = self._create_rescuerID_dict(origin_data.get('RescuerID'))
@@ -70,11 +72,13 @@ class InputGenerator:
 		
 		input_basic = data.to_numpy(dtype=float)
 		inputs = input_basic[0:self.batch_len * self.batch_size, :]
-		
+		self.inputs_col_num = np.shape(inputs)[1]
+		# Time major
+		inputs = np.transpose(inputs)
 		return inputs
 	
 	def labels_generator(self):
-		input_labels = np.zeros((self.inputs_size, 5))
+		input_labels = np.zeros((self.inputs_size, self.num_classes))
 		for x in range(self.inputs_size):
 			input_labels[x][int(self.labels[x])] = float(1)
 		return input_labels
@@ -89,7 +93,7 @@ class InputGenerator:
 	def next_batch(self):
 		if self.mode == 'basic':
 			if self.inputs_size > self.batch_flag:
-				next_inputs = self.inputs[self.batch_flag:self.batch_flag + self.batch_size, :, np.newaxis]
+				next_inputs = self.inputs[:, self.batch_flag:self.batch_flag + self.batch_size, np.newaxis]
 				next_labels = self.input_labels[self.batch_flag:self.batch_flag + self.batch_size, :]
 				self.batch_flag = self.batch_flag + self.batch_size
 				return next_inputs, next_labels
@@ -97,7 +101,6 @@ class InputGenerator:
 				raise StopIteration
 			else:
 				raise ValueError('Iterator does not match the data size!')
-
 
 # gen = InputGenerator('../data',20)
 # k = gen.next_batch()

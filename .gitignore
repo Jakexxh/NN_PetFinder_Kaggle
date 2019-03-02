@@ -1,4 +1,6 @@
 data/*
+logs/*
+checkpoint/*
 !data/README.md
 .idea
 .vscode
